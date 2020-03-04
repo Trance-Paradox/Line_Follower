@@ -2,19 +2,6 @@
 
 int ir_snsr[8];
 
-void setup()
-{
-  Serial.begin(9600);
-
-  for (int i = 7; i <= 17; i++)
-    if (i < 7 || i >= 13)
-      pinMode(i, OUTPUT);                               //motor control pins
-
-  for (int i = 3; i < 13; i++)                          //ir sensor pins
-    if (i < 5 || i >= 7)
-      pinMode(i, INPUT);
-
-}
 class motor                                             //motor_class containg all its functions
 {
     int F_pin, R_pin, S_pin;
@@ -51,8 +38,27 @@ class motor                                             //motor_class containg a
       analogWrite(S_pin, spd);
     }
 };
+
+
 motor L_motor(14, 15, 5);                                 //variables of motor_class with output pins
 motor R_motor(16, 17, 6);                                 //variables of motor_class with output pins
+
+
+
+void setup()
+{
+  Serial.begin(9600);
+
+  for (int i = 7; i <= 17; i++)
+    if (i < 7 || i >= 13)
+      pinMode(i, OUTPUT);                               //motor control pins
+
+  for (int i = 3; i < 13; i++)                          //ir sensor pins
+    if (i < 5 || i >= 7)
+      pinMode(i, INPUT);
+
+}
+
 
 
 void loop()
