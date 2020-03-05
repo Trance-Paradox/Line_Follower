@@ -1,72 +1,99 @@
-#include <Arduino.h>
-
-uint8_t ir_snsr;
-
-class motor                                             //motor_class containg all its functions
+int err()
 {
-    int F_pin, R_pin, S_pin;
-
-  public:
-    motor(int F, int R, int S)
-      : F_pin(F), R_pin(R), S_pin(S)
-    {
-      pinMode(F_pin, OUTPUT);
-      pinMode(R_pin, OUTPUT);
-      pinMode(S_pin, OUTPUT);
-    }
-    void FORWARD()
-    {
-      digitalWrite(F_pin, HIGH);
-      digitalWrite(R_pin, LOW);
-    }
-    void BACKWARD()
-    {
-      digitalWrite(F_pin, LOW);
-      digitalWrite(R_pin, HIGH);
-    }
-    void STOP()
-    {
-      digitalWrite(F_pin, LOW);
-      digitalWrite(R_pin, LOW);
-    }
-    void HOLD()
-    {
-      digitalWrite(F_pin, HIGH);
-      digitalWrite(R_pin, HIGH);
-    }
-    void setSpeed(int spd = 255)
-    {
-      analogWrite(S_pin, spd);
-    }
-};
-
-
-motor L_motor(14, 15, 5);                                 //variables of motor_class with output pins
-motor R_motor(16, 17, 6);                                 //variables of motor_class with output pins
-
-
-uint8_t ir_array[] = {2, 3, 4, 5, 6, 7, 8, 9};
-
-
-void setup()
-{
-  Serial.begin(9600);
-
+  if (digitalRead(12) == 0 && digitalRead(13) == 0)
+    return 1;
+  ir_arr = 0;
   for (int i = 0; i < sizeof(ir_array); i++)
-    pinMode(ir_array[i], OUTPUT);
-
+    ir_arr |= digitalRead(ir_array[i]) << i;
+  int error = 0;
+  for (int i = 0; i < 4; i++)
+    if (ir_arr & (1 << i))
+      error += 1 << (4 - i);
+  error -= (ir_arr & 0b11110000) >> 3;
+  //  for (int i = 4; i < 8; i++)
+  //    if (ir_arr & (1 << i))
+  //      error -= 1 << (i - 3);
+  return error;
 }
 
-
-
-void loop()
+void diffSpeed()
 {
-  for (int i = 0; i < sizeof(ir_array); i++)
-    ir_snsr |= digitalRead(ir_array[i]) << i;
+  int error = 0;
+  int mul = 16;
+  //  error += (~ir_arr) & 0b1111;
+  //  error -= (ir_arr >> 4) & 0b1111;
 
-  Serial.println(ir_snsr, BIN);
+  for (int i = 0; i < 4; i++)
+    if (ir_arr & (1 << i))
+      error += 1 << (4 - i);
+  error -= (ir_arr & 0b11110000) >> 3;
+  //  for (int i = 4; i < 8; i++)
+  //    if (ir_arr & (1 << i))
+  //      error -= 1 << (i - 3);
 
-  L_motor.FORWARD();
-  R_motor.FORWARD();
-
+  error = error * 16;
+  
+  //  Serial.println(error);
+  
+  if (error > 0 && error < 256)
+  {
+    L_motor.FORWARD();
+    R_motor.FORWARD();
+    L_motor.setSpeed(255 - error);
+    R_motor.setSpeed(255);
+    return;
+  }
+  else if (error > 256)
+  {
+    L_motor.BACKWARD();
+    R_motor.FORWARD();
+    L_motor.setSpeed(255);
+    R_motor.setSpeed(255);
+    return;
+  }
+  else if (error < 0 && error > -256)
+  {
+    L_motor.FORWARD();
+    R_motor.FORWARD();
+    R_motor.setSpeed(255 + error);
+    L_motor.setSpeed(255);
+    return;
+  }
+  else if (error < -256)
+  {
+    L_motor.FORWARD();
+    R_motor.BACKWARD();
+    R_motor.setSpeed(255);
+    L_motor.setSpeed(255);
+    return;
+  }
+  else if (ir_arr)
+  {
+    if (digitalRead(12) == digitalRead(13))
+    {
+      L_motor.FORWARD();
+      R_motor.FORWARD();
+      R_motor.setSpeed(255);
+      L_motor.setSpeed(255);
+      return;
+    }
+    else if (digitalRead(13) > digitalRead(12))
+    {
+      L_motor.BACKWARD();
+      R_motor.FORWARD();
+      R_motor.setSpeed(200);
+      L_motor.setSpeed(200);
+      while (!err());
+      return;
+    }
+    else if (digitalRead(12) > digitalRead(13))
+    {
+      R_motor.BACKWARD();
+      L_motor.FORWARD();
+      R_motor.setSpeed(200);
+      L_motor.setSpeed(200);
+      while (!err());
+      return;
+    }
+  }
 }
